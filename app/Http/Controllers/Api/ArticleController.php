@@ -1,0 +1,112 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\Article;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
+
+class ArticleController extends Controller implements HasMiddleware
+{
+    public static function middleware(): array
+    {
+        return[
+            new Middleware('permission:View_Articles',only:['index','show']),
+            new Middleware('permission:Edit_Articles',only:['update']),
+            new Middleware('permission:Create_Articles',only:['store']),
+            new Middleware('permission:Delete_Articles',only:['destroy']),
+        ];
+    }
+    public function index()
+    {
+        $articles = Article::latest()->paginate(25);
+        return response()->json([
+            'status' => true,
+            'articles' => $articles
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'title' => 'required|min:5',
+            'author' => 'required|min:5',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $article = Article::create([
+            'title' => $request->title,
+            'text' => $request->text,
+            'author' => $request->author,
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Article added successfully.',
+            'article' => $article
+        ]);
+    }
+
+    public function show($id)
+    {
+        $article = Article::findOrFail($id);
+        return response()->json([
+            'status' => true,
+            'article' => $article
+        ]);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $article = Article::findOrFail($id);
+
+        $validator = Validator::make($request->all(), [
+            'title' => 'required|min:5',
+            'author' => 'required|min:5',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $article->update([
+            'title' => $request->title,
+            'text' => $request->text,
+            'author' => $request->author,
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Article updated successfully.',
+            'article' => $article
+        ]);
+    }
+
+    public function destroy($id)
+    {
+        $article = Article::find($id);
+
+        if (!$article) {
+            return response()->json(['status' => false, 'message' => 'Article not found'], 404);
+        }
+
+        $article->delete();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Article deleted successfully.'
+        ]);
+    }
+}
