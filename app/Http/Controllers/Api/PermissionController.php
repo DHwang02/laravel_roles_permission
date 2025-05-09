@@ -8,19 +8,19 @@ use Spatie\Permission\Models\Permission;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
 
-
 class PermissionController extends Controller implements HasMiddleware
 {
     public static function middleware(): array
     {
-        return[
-            new Middleware('permission:View_Permissions',only:['index','show']),
-            new Middleware('permission:Edit_Permissions',only:['edit','update']),
-            new Middleware('permission:Create_Permissions',only:['store']),
-            new Middleware('permission:Delete_Permissions',only:['destroy']),
+        return [
+            new Middleware('permission:View_Permissions', only: ['index', 'show']),
+            new Middleware('permission:Edit_Permissions', only: ['edit', 'update']),
+            new Middleware('permission:Create_Permissions', only: ['store']),
+            new Middleware('permission:Delete_Permissions', only: ['destroy']),
         ];
     }
 
+    // Index (GET)
     public function index()
     {
         $permissions = Permission::orderBy('created_at', 'DESC')->paginate(25);
@@ -30,6 +30,7 @@ class PermissionController extends Controller implements HasMiddleware
         ]);
     }
 
+    // Store (POST)
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -52,9 +53,10 @@ class PermissionController extends Controller implements HasMiddleware
         ], 201);
     }
 
-    public function show($id)
+    // Show (POST, avoid sensitive data in URL)
+    public function show(Request $request)
     {
-        $permission = Permission::find($id);
+        $permission = Permission::find($request->id);
 
         if (!$permission) {
             return response()->json([
@@ -69,9 +71,10 @@ class PermissionController extends Controller implements HasMiddleware
         ]);
     }
 
-    public function update(Request $request, $id)
+    // Update (POST, avoid sensitive data in URL)
+    public function update(Request $request)
     {
-        $permission = Permission::find($id);
+        $permission = Permission::find($request->id);
 
         if (!$permission) {
             return response()->json([
@@ -81,7 +84,7 @@ class PermissionController extends Controller implements HasMiddleware
         }
 
         $validator = Validator::make($request->all(), [
-            'name' => 'required|min:3|unique:permissions,name,' . $id
+            'name' => 'required|min:3|unique:permissions,name,' . $request->id
         ]);
 
         if ($validator->fails()) {
@@ -101,9 +104,10 @@ class PermissionController extends Controller implements HasMiddleware
         ]);
     }
 
-    public function destroy($id)
+    // Destroy (POST, avoid sensitive data in URL)
+    public function destroy(Request $request)
     {
-        $permission = Permission::find($id);
+        $permission = Permission::find($request->id);
 
         if (!$permission) {
             return response()->json([

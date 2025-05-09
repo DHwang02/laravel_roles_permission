@@ -13,7 +13,7 @@ class AuthController extends Controller
         $validator = Validator::make($request->all(),[
             "name"=>"required | string",
             "email"=>"required | string | email | unique:users",
-            "password"=>"required | confirmed" //Password Comfirmation
+            "password"=>"required | confirmed" //Password Confirmation
         ]);
 
         if ($validator->fails()){
@@ -39,7 +39,6 @@ class AuthController extends Controller
     }
 
     public function login(Request $request){
-
         $validator = Validator::make($request->all(),[
             "email"=>"required",
             "password"=>"required"
@@ -54,33 +53,30 @@ class AuthController extends Controller
             return response()->json($response, 401);
         }
 
-        //check user by email
+        // Check user by email
         $user = User::where("email", $request->email)->first();
 
-        //check user by password
-        if(!empty($user)){
-
-            if(Hash::check($request->password, $user->password)){
+        // Check user by password
+        if (!empty($user)) {
+            if (Hash::check($request->password, $user->password)) {
                 
-                //Login is ok
+                // Login is ok
                 $tokenInfo = $user->createToken("token");
 
-                $token = $tokenInfo->plainTextToken; //Token value
+                $token = $tokenInfo->plainTextToken; // Token value
                 
                 return response()->json([
                     "status"=>true,
                     "message"=>"Login successfully",
                     "token"=>$token
                 ]);
-            }else{
-
+            } else {
                 return response()->json([
                     "status"=>false,
                     "message"=>"Password didn't match."
                 ]);
             }
-        }else{
-
+        } else {
             return response()->json([
                 "status"=>false,
                 "message"=>"Invalid credentials"
@@ -88,9 +84,8 @@ class AuthController extends Controller
         }
     }
 
-    //Profile(GET, Auth Token)
-    public function profile(){
-
+    // Profile (GET, Auth Token)
+    public function profile(Request $request){
         $userData = auth()->user();
 
         return response()->json([
@@ -100,10 +95,9 @@ class AuthController extends Controller
         ]);
     }
 
-    //Logout(GET, Auth Token)
-    public function logout(){
-        
-        //To get all tokens of logged in user and delete that
+    // Logout (POST, Auth Token)
+    public function logout(Request $request){
+        // To get all tokens of logged-in user and delete them
         request()->user()->tokens()->delete();
 
         return response()->json([
@@ -112,11 +106,11 @@ class AuthController extends Controller
         ]);
     }
 
-    public function refreshToken(){
-
+    // Refresh Token (POST, Auth Token)
+    public function refreshToken(Request $request){
         $tokenInfo = request()->user()->createToken("newtoken");
 
-        $newToken = $tokenInfo->plainTextToken; //Token value
+        $newToken = $tokenInfo->plainTextToken; // Token value
 
         return response()->json([
             "status"=> true,
@@ -124,5 +118,4 @@ class AuthController extends Controller
             "access_token"=> $newToken
         ]);
     }
-
 }

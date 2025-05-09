@@ -16,12 +16,13 @@ class UserController extends Controller implements HasMiddleware
     public static function middleware(): array
     {
         return[
-            new Middleware('permission:View_Users',only:['index','show','roles']),
-            new Middleware('permission:Edit_Users',only:['update']),
+            new Middleware('permission:View_Users', only: ['index', 'show', 'roles']),
+            new Middleware('permission:Edit_Users', only: ['update']),
         ];
     }
     
-    public function index()
+    // Use GET for listing users
+    public function index(Request $request)
     {
         $users = User::latest()->paginate(10);
         return response()->json([
@@ -30,8 +31,10 @@ class UserController extends Controller implements HasMiddleware
         ]);
     }
 
-    public function show($id)
+    // Use GET for showing a user, no sensitive data in the URL
+    public function show(Request $request)
     {
+        $id = $request->input('id');
         $user = User::findOrFail($id);
         return response()->json([
             'status' => true,
@@ -39,8 +42,10 @@ class UserController extends Controller implements HasMiddleware
         ]);
     }
 
-    public function update(Request $request, $id)
+    // Use POST for updating a user, no sensitive data in the URL
+    public function update(Request $request)
     {
+        $id = $request->input('id');
         $user = User::findOrFail($id);
 
         $validator = Validator::make($request->all(), [
@@ -72,8 +77,10 @@ class UserController extends Controller implements HasMiddleware
         ]);
     }
 
-    public function destroy($id)
+    // Use POST for deleting a user, no sensitive data in the URL
+    public function destroy(Request $request)
     {
+        $id = $request->input('id');
         $user = User::find($id);
 
         if (!$user) {
@@ -88,8 +95,10 @@ class UserController extends Controller implements HasMiddleware
         ]);
     }
 
-    public function roles($id)
+    // Use GET for showing roles, no sensitive data in the URL
+    public function roles(Request $request)
     {
+        $id = $request->input('id');
         $user = User::findOrFail($id);
 
         return response()->json([
@@ -100,5 +109,4 @@ class UserController extends Controller implements HasMiddleware
             'permissions' => $user->getAllPermissions()->pluck('name') // ← include role permissions too
         ]);
     }
-
 }

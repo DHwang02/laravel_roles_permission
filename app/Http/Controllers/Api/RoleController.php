@@ -12,16 +12,17 @@ use Illuminate\Routing\Controllers\Middleware;
 
 class RoleController extends Controller implements HasMiddleware
 {
-
     public static function middleware(): array
     {
-        return[
-            new Middleware('permission:View_Roles',only:['index','show','permissions']),
-            new Middleware('permission:Edit_Roles',only:['edit','update','assignPermission','removePermission']),
-            new Middleware('permission:Create_Roles',only:['store']),
-            new Middleware('permission:Delete_Roles',only:['destroy']),
+        return [
+            new Middleware('permission:View_Roles', only: ['index', 'show', 'permissions']),
+            new Middleware('permission:Edit_Roles', only: ['edit', 'update', 'assignPermission', 'removePermission']),
+            new Middleware('permission:Create_Roles', only: ['store']),
+            new Middleware('permission:Delete_Roles', only: ['destroy']),
         ];
     }
+
+    // Index (GET)
     public function index()
     {
         $roles = Role::orderBy('name', 'ASC')->paginate(25);
@@ -31,6 +32,7 @@ class RoleController extends Controller implements HasMiddleware
         ]);
     }
 
+    // Store (POST)
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -57,24 +59,32 @@ class RoleController extends Controller implements HasMiddleware
         ]);
     }
 
-    public function edit($id)
+    // Show (POST, avoid sensitive data in URL)
+    public function show(Request $request)
     {
-        $role = Role::findOrFail($id);
-        $permissions = Permission::all();
+        $role = Role::find($request->id);
+
+        if (!$role) {
+            return response()->json(['status' => false, 'message' => 'Role not found'], 404);
+        }
 
         return response()->json([
             'status' => true,
-            'role' => $role,
-            'permissions' => $permissions
+            'role' => $role
         ]);
     }
 
-    public function update(Request $request, $id)
+    // Update (POST, avoid sensitive data in URL)
+    public function update(Request $request)
     {
-        $role = Role::findOrFail($id);
+        $role = Role::find($request->id);
+
+        if (!$role) {
+            return response()->json(['status' => false, 'message' => 'Role not found'], 404);
+        }
 
         $validator = Validator::make($request->all(), [
-            'name' => 'required|unique:roles,name,' . $id . '|min:3'
+            'name' => 'required|unique:roles,name,' . $request->id . '|min:3'
         ]);
 
         if ($validator->fails()) {
@@ -98,9 +108,10 @@ class RoleController extends Controller implements HasMiddleware
         ]);
     }
 
-    public function destroy($id)
+    // Destroy (POST, avoid sensitive data in URL)
+    public function destroy(Request $request)
     {
-        $role = Role::find($id);
+        $role = Role::find($request->id);
 
         if (!$role) {
             return response()->json(['status' => false, 'message' => 'Role not found'], 404);
@@ -114,9 +125,14 @@ class RoleController extends Controller implements HasMiddleware
         ]);
     }
 
-    public function permissions($id)
+    // Permissions (GET)
+    public function permissions(Request $request)
     {
-        $role = Role::with('permissions')->findOrFail($id);
+        $role = Role::with('permissions')->find($request->id);
+
+        if (!$role) {
+            return response()->json(['status' => false, 'message' => 'Role not found'], 404);
+        }
 
         return response()->json([
             'role' => $role->name,
@@ -124,13 +140,15 @@ class RoleController extends Controller implements HasMiddleware
         ]);
     }
 
-    public function assignPermission(Request $request, $id)
+    // Assign Permission (POST)
+    public function assignPermission(Request $request)
     {
         $request->validate([
+            'id' => 'required|exists:roles,id',
             'permission' => 'required|string|exists:permissions,name'
         ]);
 
-        $role = Role::findOrFail($id);
+        $role = Role::find($request->id);
 
         if ($role->hasPermissionTo($request->permission)) {
             return response()->json([
@@ -147,15 +165,17 @@ class RoleController extends Controller implements HasMiddleware
         ]);
     }
 
-    public function removePermission(Request $request, $id)
+    // Remove Permission (POST)
+    public function removePermission(Request $request)
     {
         $request->validate([
+            'id' => 'required|exists:roles,id',
             'permission' => 'required|string|exists:permissions,name'
         ]);
 
-        $role = Role::findOrFail($id);
+        $role = Role::find($request->id);
 
-        if (! $role->hasPermissionTo($request->permission)) {
+        if (!$role->hasPermissionTo($request->permission)) {
             return response()->json([
                 'status' => false,
                 'message' => "Permission '{$request->permission}' is not assigned to role '{$role->name}'."
@@ -169,5 +189,4 @@ class RoleController extends Controller implements HasMiddleware
             'message' => "Permission '{$request->permission}' removed from role '{$role->name}'."
         ]);
     }
-
 }
