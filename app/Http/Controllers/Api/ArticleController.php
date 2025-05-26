@@ -6,19 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\Article;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Routing\Controllers\HasMiddleware;
-use Illuminate\Routing\Controllers\Middleware;
+use App\Http\Middlewares\AccessMiddleware;
 
-class ArticleController extends Controller implements HasMiddleware
+class ArticleController extends Controller
 {
-    public static function middleware(): array
+    public function __construct()
     {
-        return[
-            new Middleware('permission:View_Articles',only:['index','show']),
-            new Middleware('permission:Edit_Articles',only:['update']),
-            new Middleware('permission:Create_Articles',only:['store']),
-            new Middleware('permission:Delete_Articles',only:['destroy']),
-        ];
+        foreach (AccessMiddleware::permissions() as $rule) {
+            $this->middleware($rule['middleware'])->only($rule['only']);
+        }
     }
     public function index()
     {

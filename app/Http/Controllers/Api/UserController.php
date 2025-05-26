@@ -6,19 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Routing\Controllers\HasMiddleware;
-use Illuminate\Routing\Controllers\Middleware;
+use App\Http\Middlewares\AccessMiddleware;
 
-
-class UserController extends Controller implements HasMiddleware
+class UserController extends Controller
 {
-
-    public static function middleware(): array
+    public function __construct()
     {
-        return[
-            new Middleware('permission:View_Users', only: ['index', 'show', 'roles']),
-            new Middleware('permission:Edit_Users', only: ['update']),
-        ];
+        foreach (AccessMiddleware::permissions() as $rule) {
+            $this->middleware($rule['middleware'])->only($rule['only']);
+        }
     }
     
     // Use GET for listing users

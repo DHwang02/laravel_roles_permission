@@ -5,21 +5,16 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
-use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
-use Illuminate\Routing\Controllers\HasMiddleware;
-use Illuminate\Routing\Controllers\Middleware;
+use App\Http\Middlewares\AccessMiddleware;
 
-class RoleController extends Controller implements HasMiddleware
+class RoleController extends Controller
 {
-    public static function middleware(): array
+    public function __construct()
     {
-        return [
-            new Middleware('permission:View_Roles', only: ['index', 'show', 'permissions']),
-            new Middleware('permission:Edit_Roles', only: ['edit', 'update', 'assignPermission', 'removePermission']),
-            new Middleware('permission:Create_Roles', only: ['store']),
-            new Middleware('permission:Delete_Roles', only: ['destroy']),
-        ];
+        foreach (AccessMiddleware::permissions() as $rule) {
+            $this->middleware($rule['middleware'])->only($rule['only']);
+        }
     }
 
     // Index (GET)

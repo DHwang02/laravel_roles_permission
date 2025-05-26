@@ -5,19 +5,17 @@ namespace App\Http\Controllers\Api;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Models\Permission;
-use Illuminate\Routing\Controllers\HasMiddleware;
-use Illuminate\Routing\Controllers\Middleware;
+use App\Http\Controllers\Controller;
+use App\Http\Middlewares\AccessMiddleware;
+use Illuminate\Support\Str;
 
-class PermissionController extends Controller implements HasMiddleware
+class PermissionController extends Controller
 {
-    public static function middleware(): array
+    public function __construct()
     {
-        return [
-            new Middleware('permission:View_Permissions', only: ['index', 'show']),
-            new Middleware('permission:Edit_Permissions', only: ['edit', 'update']),
-            new Middleware('permission:Create_Permissions', only: ['store']),
-            new Middleware('permission:Delete_Permissions', only: ['destroy']),
-        ];
+        foreach (AccessMiddleware::permissions() as $rule) {
+            $this->middleware($rule['middleware'])->only($rule['only']);
+        }
     }
 
     // Index (GET)
@@ -34,7 +32,7 @@ class PermissionController extends Controller implements HasMiddleware
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|unique:permissions|min:3'
+            'display_name' => 'required|min:3'
         ]);
 
         if ($validator->fails()) {
@@ -44,7 +42,22 @@ class PermissionController extends Controller implements HasMiddleware
             ], 422);
         }
 
-        $permission = Permission::create(['name' => $request->name]);
+        $displayName = $request->display_name;
+        $name = Str::slug($displayName, '-'); // Converts "Edit Permission" to "edit-permission"
+
+        // Check for uniqueness of generated 'name'
+        if (Permission::where('name', $name)->exists()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Permission name already exists.'
+            ], 409);
+        }
+
+        $permission = Permission::create([
+            'name' => $name,
+            'display_name' => $displayName,
+            'guard_name' => 'web'
+        ]);
 
         return response()->json([
             'status' => true,
@@ -53,7 +66,7 @@ class PermissionController extends Controller implements HasMiddleware
         ], 201);
     }
 
-    // Show (POST, avoid sensitive data in URL)
+    // Show (POST)
     public function show(Request $request)
     {
         $permission = Permission::find($request->id);
@@ -71,7 +84,7 @@ class PermissionController extends Controller implements HasMiddleware
         ]);
     }
 
-    // Update (POST, avoid sensitive data in URL)
+    // Update (POST)
     public function update(Request $request)
     {
         $permission = Permission::find($request->id);
@@ -84,7 +97,7 @@ class PermissionController extends Controller implements HasMiddleware
         }
 
         $validator = Validator::make($request->all(), [
-            'name' => 'required|min:3|unique:permissions,name,' . $request->id
+            'display_name' => 'required|min:3'
         ]);
 
         if ($validator->fails()) {
@@ -94,7 +107,19 @@ class PermissionController extends Controller implements HasMiddleware
             ], 422);
         }
 
-        $permission->name = $request->name;
+        $displayName = $request->display_name;
+        $name = Str::slug($displayName, '-');
+
+        // Check if new name is already taken by another permission
+        if (Permission::where('name', $name)->where('id', '!=', $permission->id)->exists()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Permission name already exists.'
+            ], 409);
+        }
+
+        $permission->name = $name;
+        $permission->display_name = $displayName;
         $permission->save();
 
         return response()->json([
@@ -104,7 +129,7 @@ class PermissionController extends Controller implements HasMiddleware
         ]);
     }
 
-    // Destroy (POST, avoid sensitive data in URL)
+    // Destroy (POST)
     public function destroy(Request $request)
     {
         $permission = Permission::find($request->id);

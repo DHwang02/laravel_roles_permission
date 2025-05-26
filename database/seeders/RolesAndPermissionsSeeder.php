@@ -4,77 +4,83 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
+use App\Models\User;
 
 class RolesAndPermissionsSeeder extends Seeder
 {
     public function run()
     {
+        // Clear permission cache
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
-        // Create permissions
+
+        // List of permissions with display names
         $permissions = [
-            'View_Permissions',
-            'Create_Permissions',
-            'Edit_Permissions',
-            'Delete_Permissions',
-            'View_Roles',
-            'Create_Roles',
-            'Edit_Roles',
-            'Delete_Roles',
-            'View_Articles',
-            'Create_Articles',
-            'Edit_Articles',
-            'Delete_Articles',
-            'View_Users',
-            'Create_Users',
-            'Edit_Users',
-            'Delete_Users',
+            'View Permissions',
+            'Create Permissions',
+            'Edit Permissions',
+            'Delete Permissions',
+            'View Roles',
+            'Create Roles',
+            'Edit Roles',
+            'Delete Roles',
+            'View Articles',
+            'Create Articles',
+            'Edit Articles',
+            'Delete Articles',
+            'View Users',
+            'Create Users',
+            'Edit Users',
+            'Delete Users',
         ];
 
-        foreach ($permissions as $permission) {
-            Permission::firstOrCreate(['name' => $permission]);
+        // Create permissions
+        foreach ($permissions as $displayName) {
+            $name = Str::slug($displayName, '-');
+            Permission::firstOrCreate(
+                ['name' => $name, 'guard_name' => 'sanctum'],
+                ['display_name' => $displayName]
+            );
         }
-        
+
         // Create roles
-        $admin = Role::firstOrCreate(['name' => 'admin','guard_name' => 'sanctum']);
-        $editor = Role::firstOrCreate(['name' => 'editor','guard_name' => 'sanctum']);
-        $user = Role::firstOrCreate(['name' => 'user','guard_name' => 'sanctum']);
+        $admin  = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'sanctum']);
+        $editor = Role::firstOrCreate(['name' => 'editor', 'guard_name' => 'sanctum']);
+        $user   = Role::firstOrCreate(['name' => 'user', 'guard_name' => 'sanctum']);
 
-        // Assign permissions to roles  
-        $admin->givePermissionTo(Permission::all()); // Admin has all permissions
-        $editor->givePermissionTo(['View_Articles', 'Create_Articles', 'Edit_Articles']);
-        $user->givePermissionTo(['View_Articles']);
+        // Assign permissions to roles
+        $admin->givePermissionTo(Permission::all());
 
-        // Optionally, you can create a default user with a specific role:
-        $adminUser = \App\Models\User::firstOrCreate(
+        $editor->givePermissionTo([
+            'view-articles',
+            'create-articles',
+            'edit-articles',
+        ]);
+
+        $user->givePermissionTo([
+            'view-articles',
+        ]);
+
+        // Create users and assign roles
+        $adminUser = User::firstOrCreate(
             ['email' => 'admin@example.com'],
-                [
-                         'name' => 'Admin',
-                         'password' => Hash::make('password'),
-                        ]
-            );
+            ['name' => 'Admin', 'password' => Hash::make('password')]
+        );
+        $adminUser->assignRole($admin);
 
-        $editorUser = \App\Models\User::firstOrCreate(
+        $editorUser = User::firstOrCreate(
             ['email' => 'editor@example.com'],
-                [
-                         'name' => 'Editor',
-                         'password' => Hash::make('password'),
-                        ]
-            );
-        
-        $normalUser = \App\Models\User::firstOrCreate(
-            ['email' => 'user@example.com'],
-                [
-                         'name' => 'User',
-                         'password' => Hash::make('password'),
-                        ]
-            );
-            
+            ['name' => 'Editor', 'password' => Hash::make('password')]
+        );
+        $editorUser->assignRole($editor);
 
-        $adminUser->assignRole('admin');
-        $editorUser->assignRole('editor');
-        $normalUser->assignRole('user');
+        $normalUser = User::firstOrCreate(
+            ['email' => 'user@example.com'],
+            ['name' => 'User', 'password' => Hash::make('password')]
+        );
+        $normalUser->assignRole($user);
     }
 }
